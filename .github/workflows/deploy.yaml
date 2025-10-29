@@ -32,4 +32,4 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # Your bot token in main script
         run: |
-          python bin.py
+          python app.py
