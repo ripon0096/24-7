@@ -5,14 +5,17 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Cron: প্রতি 5 ঘণ্টায় workflow চালাবে
+    - cron: '0 */5 * * *'
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # Maximum runtime: 5 hours
+    timeout-minutes: 300  # Maximum runtime 5 hours
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -20,19 +23,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyTelegramBotAPI requests
 
-      - name: Run Telegram Bot
+      - name: Run Telegram bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # Your bot token in main script
         run: |
-          # Your main script already contains the bot token
-          python app.py
-
-      - name: Restart Workflow
-        if: always()  # Ensures this step runs even if previous steps fail
-        uses: peter-evans/workflow-dispatch@v1  # Compatible version
-        with:
-          workflow: deploy.yaml  # Name of this workflow file
-          token: ${{ secrets.GITHUB_TOKEN }}  # GitHub built-in token
+          python bin.py
