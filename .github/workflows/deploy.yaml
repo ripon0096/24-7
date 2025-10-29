@@ -9,7 +9,7 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # Maximum runtime for a single workflow run (5 hours)
+    timeout-minutes: 300  # Maximum runtime: 5 hours
 
     steps:
       - name: Checkout Repository
@@ -27,12 +27,12 @@ jobs:
 
       - name: Run Telegram Bot
         run: |
-          # Your main script already handles the bot token
+          # Your main script already contains the bot token
           python app.py
 
       - name: Restart Workflow
-        if: always()  # This step will run even if the previous steps fail
-        uses: peter-evans/workflow-dispatch@v2
+        if: always()  # Ensures this step runs even if previous steps fail
+        uses: peter-evans/workflow-dispatch@v1  # Compatible version
         with:
           workflow: deploy.yaml  # Name of this workflow file
-          token: ${{ secrets.GITHUB_TOKEN }}  # GitHub built-in token, no manual token required
+          token: ${{ secrets.GITHUB_TOKEN }}  # GitHub built-in token
