@@ -1,37 +1,3 @@
-
-
-pkg update
-pkg install git
-git clone https://github.com/ultrasecurity/Storm-Breaker
-cd Storm-Breaker
-bash install.sh
-
-
-
-
-
-
-
-
-pkg update
-pkg install git
-git clone https://github.com/ultrasecurity/Storm-Breaker
-cd Storm-Breaker
-bash install.sh
-python3 st.py
-ssh -R 80:localhost:2525 ssh.localhost.run
-admin
-
-
-
-
-
-
-
-
-
-
-
 name: Telegram Bot Auto Restart - 100% Guaranteed
 
 on:
@@ -145,7 +111,3 @@ jobs:
           else
             echo "❌ Bot restart failed - check logs"
           fi
-
-
-
-
